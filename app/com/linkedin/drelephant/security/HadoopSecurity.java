@@ -19,11 +19,10 @@ package com.linkedin.drelephant.security;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.log4j.Logger;
+import play.Play;
 
-import java.io.File;
 import java.io.IOException;
 import java.security.PrivilegedAction;
-import play.Play;
 
 
 /**
@@ -44,28 +43,7 @@ public class HadoopSecurity {
     _securityEnabled = UserGroupInformation.isSecurityEnabled();
     if (_securityEnabled) {
       logger.info("This cluster is Kerberos enabled.");
-      boolean login = true;
-
-      _keytabUser = Play.application().configuration().getString("keytab.user");
-      if (_keytabUser == null) {
-        logger.error("Keytab user not set. Please set keytab_user in the configuration file");
-        login = false;
-      }
-
-      _keytabLocation = Play.application().configuration().getString("keytab.location");
-      if (_keytabLocation == null) {
-        logger.error("Keytab location not set. Please set keytab_location in the configuration file");
-        login = false;
-      } else if (!new File(_keytabLocation).exists()) {
-        logger.error("The keytab file at location [" + _keytabLocation + "] does not exist.");
-        login = false;
-      }
-
-      if (!login) {
-        throw new IOException("Cannot login. This cluster is security enabled.");
-      }
-
-      checkLogin();
+      checkLogin();  // Just rely on kinit.
     }
   }
 
@@ -75,22 +53,19 @@ public class HadoopSecurity {
   }
 
   public void checkLogin() throws IOException {
-
     if (_loginUser == null) {
       logger.info("No login user. Creating login user");
-      logger.info("Logging with " + _keytabUser + " and " + _keytabLocation);
-      UserGroupInformation.loginUserFromKeytab(_keytabUser, _keytabLocation);
+      UserGroupInformation.loginUserFromSubject(null);
       _loginUser = UserGroupInformation.getLoginUser();
       logger.info("Logged in with user " + _loginUser);
-      if(UserGroupInformation.isLoginKeytabBased()) {
+      if (UserGroupInformation.isLoginKeytabBased()) {
         logger.info("Login is keytab based");
       } else {
         logger.info("Login is not keytab based");
       }
     } else {
-      _loginUser.checkTGTAndReloginFromKeytab();
+      _loginUser.reloginFromTicketCache();
     }
-
   }
 
   public <T> T doAs(PrivilegedAction<T> action) throws IOException {
