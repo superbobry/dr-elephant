@@ -25,6 +25,10 @@ organization := "com.linkedin.drelephant"
 
 javacOptions in Compile ++= Seq("-source", "1.6", "-target", "1.6")
 
+resolvers += "Cloudera repository" at "https://repository.cloudera.com/content/repositories/releases"
+
+resolvers += "Spring plugins repository" at "http://repo.spring.io/plugins-release"
+
 libraryDependencies ++= dependencies map { _.excludeAll(exclusionRules: _*) }
 
 // Create a new custom configuration called compileonly
